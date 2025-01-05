@@ -16,9 +16,7 @@ class Kernel extends HttpKernel
     protected $middleware = [
         \Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance::class, // Handles maintenance mode
         \Illuminate\Http\Middleware\HandleCors::class, // Handles Cross-Origin Resource Sharing (CORS)
-        // \App\Http\Middleware\TrustProxies::class, // Handles proxy headers for secure connections
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class, // Validates maximum POST size
-        // \App\Http\Middleware\TrimStrings::class, // Trims request input strings
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class, // Converts empty strings to null
     ];
 
@@ -29,6 +27,7 @@ class Kernel extends HttpKernel
      */
     protected $middlewareGroups = [
         'api' => [
+            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class, // Sanctum auth for stateful requests
             'throttle:api', // Limits API request rates
             \Illuminate\Routing\Middleware\SubstituteBindings::class, // Resolves route model bindings
         ],
@@ -42,9 +41,9 @@ class Kernel extends HttpKernel
      * @var array
      */
     protected $routeMiddleware = [
-        // 'auth' => \App\Http\Middleware\Authenticate::class, // Handles authentication
+        'auth' => \App\Http\Middleware\Authenticate::class, // Handles authentication
+        'auth:sanctum' => \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class, // Sanctum auth for token-based APIs
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class, // Handles request throttling
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class, // Verifies email addresses
-        // 'auth:sanctum' => \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class, // Sanctum auth
     ];
 }
