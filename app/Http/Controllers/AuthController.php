@@ -41,10 +41,15 @@ class AuthController extends Controller
         }
 
         // Create the user
+        /**
+         * Upon registering a customer, we are registering them as a 'user' from creation.
+         * The 'admin(s)' will be hard-coded in the database through migration file.
+         */
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'role' => 'user',
         ]);
 
         // Generate token for the user
