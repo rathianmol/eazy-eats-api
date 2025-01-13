@@ -11,6 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        /**
+         * Corresponding Seeder file exists: Database\Seeders\MealSeeder.
+         * The seeder file mentioned above will populate the meals table with the necessary existing meals.
+         *
+         * *** NOTE ***: Upon fresh migration, or re-migration, it is crucial to run the corresponding MealSeeder file as well.
+         */
         Schema::create('meals', function (Blueprint $table) {
             $table->id();
             $table->string('name'); // Meal name
