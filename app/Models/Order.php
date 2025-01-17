@@ -17,7 +17,6 @@ class Order extends Model
         return $this->belongsTo(User::class);
     }
 
-    // Placeholder for meals relationship (to be added later)
     public function meals()
     {
         return $this->belongsToMany(Meal::class)->withPivot('quantity');

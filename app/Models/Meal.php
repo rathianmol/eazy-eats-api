@@ -21,4 +21,9 @@ class Meal extends Model
         'category',
         'is_available',
     ];
+
+    public function orders()
+    {
+        return $this->belongsToMany(Order::class)->withPivot('quantity');
+    }
 }
