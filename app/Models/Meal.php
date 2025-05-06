@@ -15,15 +15,12 @@ class Meal extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
+        'title',
+        'calories',
+        'fats',
+        'carbs',
+        'proteins',
         'description',
         'price',
-        'category',
-        'is_available',
     ];
-
-    public function orders()
-    {
-        return $this->belongsToMany(Order::class)->withPivot('quantity');
-    }
 }
