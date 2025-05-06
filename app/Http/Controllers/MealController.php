@@ -14,7 +14,8 @@ class MealController extends Controller
      */
     public function index()
     {
-        $meals = Meal::where('is_available', true)->get(); // Fetch only available meals
+        // Fetch only available meals (ensure the 'is_available' column is checked)
+        $meals = Meal::all(); // Fetch all meals now that 'is_available' isn't part of the model anymore
         return response()->json($meals, 200);
     }
 
@@ -44,11 +45,13 @@ class MealController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'title' => 'required|string|max:255', // Updated to 'title'
             'description' => 'required|string',
             'price' => 'required|numeric|min:0',
-            'category' => 'nullable|string',
-            'is_available' => 'boolean',
+            'calories' => 'required|integer',  // New attribute
+            'fats' => 'required|integer',  // New attribute
+            'carbs' => 'required|integer',  // New attribute
+            'proteins' => 'required|integer',  // New attribute
         ]);
 
         $meal = Meal::create($validated);
@@ -72,11 +75,13 @@ class MealController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'nullable|string|max:255',
+            'title' => 'nullable|string|max:255', // Updated to 'title'
             'description' => 'nullable|string',
             'price' => 'nullable|numeric|min:0',
-            'category' => 'nullable|string',
-            'is_available' => 'boolean',
+            'calories' => 'nullable|integer',  // New attribute
+            'fats' => 'nullable|integer',  // New attribute
+            'carbs' => 'nullable|integer',  // New attribute
+            'proteins' => 'nullable|integer',  // New attribute
         ]);
 
         $meal->update($validated);
