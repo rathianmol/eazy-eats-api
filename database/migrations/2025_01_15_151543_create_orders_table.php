@@ -13,10 +13,12 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Order belongs to a user
-            $table->decimal('total_price', 8, 2)->default(0); // Total price of the order
-            $table->string('status')->default('pending'); // Status of the order (e.g., pending, completed, etc.)
-            $table->timestamps();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Links to the user who placed the order
+            $table->json('meals'); // A JSON column to store meal IDs and quantities like {meal_id: quantity, ...}
+            $table->decimal('total_price', 8, 2); // The total price of the order
+            $table->enum('status', ['pending', 'in_progress', 'completed', 'cancelled'])->default('pending'); // Order status
+            $table->timestamps(); // created_at and updated_at timestamps
+            $table->softDeletes(); // Soft deletes: deleted_at column
         });
     }
 

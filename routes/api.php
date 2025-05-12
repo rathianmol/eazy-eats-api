@@ -31,11 +31,11 @@ Route::prefix('v1')->group(function () {
 
         // Order Routes for logged-in users
         Route::prefix('orders')->group(function () {
-            Route::get('/', [OrderController::class, 'index']); // List all orders for the user
+            Route::get('/', [OrderController::class, 'userOrders']); // List all orders for the user
             Route::post('/', [OrderController::class, 'store']); // Create a new order
-            Route::get('/{id}', [OrderController::class, 'show']); // View a specific order
-            Route::put('/{id}', [OrderController::class, 'update']); // Update an order
-            Route::delete('/{id}', [OrderController::class, 'destroy']); // Delete an order
+            Route::get('/{orderId}', [OrderController::class, 'show']); // View a specific order
+            Route::put('/{orderId}', [OrderController::class, 'update']); // Update an order
+            Route::delete('/{orderId}', [OrderController::class, 'destroy']); // Delete an order (soft delete)
         });
     });
 
@@ -49,13 +49,14 @@ Route::prefix('v1')->group(function () {
         // Order Management for admin users
         Route::prefix('orders')->group(function () {
             Route::get('/', [OrderController::class, 'index']); // View all orders
-            Route::get('/{id}', [OrderController::class, 'show']); // View a specific order
+            Route::get('/{orderId}', [OrderController::class, 'show']); // View a specific order
+            Route::put('/{orderId}', [OrderController::class, 'update']); // Update order status (admin)
         });
     });
 
     // Super Admin Routes (Optional, if needed)
     Route::middleware(['auth:sanctum', 'role:super-admin'])->prefix('super-admin')->group(function () {
-        // Additional routes for super-admin if necessary, e.g. user management
+        // Additional routes for super-admin if necessary, e.g., user management
         // Example: Route::post('/users', [UserController::class, 'create']);
     });
 });

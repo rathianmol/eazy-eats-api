@@ -5,96 +5,72 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Meal;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class OrderController extends Controller
 {
     /**
-     * Display a listing of orders for the authenticated user.
+     * Store a new order.
      *
-     * GET /api/v1/orders
-     * Response:
-     *
-     *[
-     *    {
-     *        "id": 1,
-     *        "total_price": 27.00,
-     *        "meals": [
-     *            { "id": 1, "name": "Bourbon Chicken", "price": 10.00, "quantity": 2 },
-     *            { "id": 3, "name": "Morning Delight", "price": 7.00, "quantity": 1 }
-     *        ]
-     *    }
-     *]
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function index()
+    public function store(Request $request)
     {
-        $orders = Order::with(['meals' => function ($query) {
-            $query->select('meals.id', 'name', 'price', 'quantity');
-        }])
-        ->where('user_id', auth()->id())
-        ->get();
+        $user = Auth::user(); // Get the logged-in user
 
+        // Validate the incoming order data
+        $validatedData = $request->validate([
+            'meals' => 'required|array',
+            'meals.*.meal_id' => 'required|exists:meals,id',
+            'meals.*.quantity' => 'required|integer|min:1',
+        ]);
+
+        // Calculate the total price and store meal details
+        $totalPrice = 0;
+        $mealsData = [];
+
+        // Process meals and calculate total price
+        foreach ($validatedData['meals'] as $meal) {
+            $mealModel = Meal::find($meal['meal_id']);
+            $mealsData[$meal['meal_id']] = $meal['quantity'];
+            $totalPrice += $mealModel->price * $meal['quantity'];
+        }
+
+        // Create the order
+        $order = Order::create([
+            'user_id' => $user->id,
+            'meals' => $mealsData, // Store meal IDs and quantities as JSON
+            'total_price' => $totalPrice,
+            'status' => 'pending', // Default status is 'pending'
+        ]);
+
+        return response()->json([
+            'message' => 'Order placed successfully',
+            'order' => $order,
+        ], 201);
+    }
+
+    /**
+     * Display all orders for the authenticated user.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function userOrders()
+    {
+        $orders = Auth::user()->orders()->get();
         return response()->json($orders);
     }
 
     /**
-     * Store a newly created order with linked meals.
+     * Display a specific order by its ID.
      *
-     * POST /api/v1/orders
-     * Payload:
-     * {
-     *  "meals": [
-     *      { "id": 1, "quantity": 2 },
-     *      { "id": 3, "quantity": 1 }
-     *  ]
-     * }
+     * @param int $orderId
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function store(Request $request)
+    public function show($orderId)
     {
-        $validated = $request->validate([
-            'meals' => 'required|array', // An array of meal IDs and quantities
-            'meals.*.id' => 'required|exists:meals,id', // Validate each meal ID
-            'meals.*.quantity' => 'required|integer|min:1', // Validate each meal quantity
-        ]);
-
-        // Create a new order for the authenticated user
-        $order = Order::create([
-            'user_id' => auth()->id(),
-            'total_price' => 0, // We'll calculate this below
-        ]);
-
-        $totalPrice = 0;
-
-        // Attach meals to the order and calculate the total price
-        foreach ($validated['meals'] as $meal) {
-            $mealModel = Meal::find($meal['id']);
-            $quantity = $meal['quantity'];
-
-            // Attach the meal to the order with quantity
-            $order->meals()->attach($mealModel, ['quantity' => $quantity]);
-
-            // Increment the total price
-            $totalPrice += $mealModel->price * $quantity;
-        }
-
-        // Update the total price of the order
-        $order->update(['total_price' => $totalPrice]);
-
-        return response()->json(['message' => 'Order created successfully!', 'order' => $order->load('meals')]);
-    }
-
-    /**
-     * Display the specified order for the authenticated user.
-     *
-     * GET /api/v1/orders/{id})
-     */
-    public function show($id)
-    {
-        $order = Order::with(['meals' => function ($query) {
-            $query->select('meals.id', 'name', 'price', 'quantity');
-        }])
-        ->where('id', $id)
-        ->where('user_id', auth()->id())
-        ->first();
+        $order = Order::find($orderId);
 
         if (!$order) {
             return response()->json(['message' => 'Order not found'], 404);
@@ -104,74 +80,87 @@ class OrderController extends Controller
     }
 
     /**
-     * Update the specified order.
+     * Update an existing order status (e.g., from 'pending' to 'in_progress').
      *
-     * PUT /api/v1/orders/{id}
-     * {
-     *     "meals": [
-     *         { "id": 2, "quantity": 3 }
-     *     ]
-     * }
+     * @param int $orderId
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, $orderId)
     {
-        $order = Order::where('id', $id)
-            ->where('user_id', auth()->id())
-            ->first();
+        $order = Order::find($orderId);
 
         if (!$order) {
             return response()->json(['message' => 'Order not found'], 404);
         }
 
-        $validated = $request->validate([
-            'meals' => 'sometimes|array', // Optional array of meals
-            'meals.*.id' => 'required|exists:meals,id',
-            'meals.*.quantity' => 'required|integer|min:1',
+        $validatedData = $request->validate([
+            'status' => 'required|in:pending,in_progress,completed,cancelled',
         ]);
 
-        $totalPrice = 0;
+        $order->status = $validatedData['status'];
+        $order->save();
 
-        // Update meals if provided
-        if ($request->has('meals')) {
-            $order->meals()->detach(); // Remove existing meals
-
-            foreach ($validated['meals'] as $meal) {
-                $mealModel = Meal::find($meal['id']);
-                $quantity = $meal['quantity'];
-
-                // Re-attach meals with new quantities
-                $order->meals()->attach($mealModel, ['quantity' => $quantity]);
-
-                // Update the total price
-                $totalPrice += $mealModel->price * $quantity;
-            }
-        } else {
-            $totalPrice = $order->total_price; // Retain the original price if meals aren't updated
-        }
-
-        // Update the order's total price
-        $order->update(['total_price' => $totalPrice]);
-
-        return response()->json(['message' => 'Order updated successfully!', 'order' => $order->load('meals')]);
+        return response()->json([
+            'message' => 'Order status updated successfully',
+            'order' => $order,
+        ]);
     }
 
     /**
-     * Remove the specified order for the authenticated user.
+     * Soft delete an order (mark as deleted).
      *
-     * DELETE /api/v1/orders/{id}
+     * @param int $orderId
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($id)
+    public function destroy($orderId)
     {
-        $order = Order::where('id', $id)
-            ->where('user_id', auth()->id())
-            ->first();
+        $order = Order::find($orderId);
 
         if (!$order) {
             return response()->json(['message' => 'Order not found'], 404);
         }
 
-        $order->delete();
+        $order->delete(); // Soft delete the order
 
-        return response()->json(['message' => 'Order deleted successfully!']);
+        return response()->json(['message' => 'Order deleted successfully']);
+    }
+
+    /**
+     * Restore a soft-deleted order.
+     *
+     * @param int $orderId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function restore($orderId)
+    {
+        $order = Order::withTrashed()->find($orderId);
+
+        if (!$order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        $order->restore(); // Restore the soft-deleted order
+
+        return response()->json(['message' => 'Order restored successfully']);
+    }
+
+    /**
+     * Permanently delete an order (force delete).
+     *
+     * @param int $orderId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function forceDelete($orderId)
+    {
+        $order = Order::withTrashed()->find($orderId);
+
+        if (!$order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        $order->forceDelete(); // Permanently delete the order
+
+        return response()->json(['message' => 'Order permanently deleted']);
     }
 }
