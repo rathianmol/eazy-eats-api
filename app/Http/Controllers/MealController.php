@@ -15,7 +15,7 @@ class MealController extends Controller
     public function index()
     {
         // Fetch only available meals (ensure the 'is_available' column is checked)
-        $meals = Meal::all(); // Fetch all meals now that 'is_available' isn't part of the model anymore
+        $meals = Meal::all();
         return response()->json($meals, 200);
     }
 
