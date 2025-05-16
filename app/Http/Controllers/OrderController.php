@@ -17,6 +17,7 @@ class OrderController extends Controller
      */
     public function store(Request $request)
     {
+        // xdebug_break();
         $user = Auth::user(); // Get the logged-in user
 
         // Validate the incoming order data
@@ -60,8 +61,50 @@ class OrderController extends Controller
      */
     public function userOrders()
     {
-        $orders = Auth::user()->orders()->get(); // Get all orders for the authenticated user
-        return response()->json($orders);  // Return the orders as JSON
+         $user = Auth::user();
+
+        // Paginate orders for the authenticated user (10 orders per page for example)
+        // Automatically handles pagination based on `page` query parameter.
+        $orders = $user->orders()->latest()->paginate(10);
+
+        // Prepare data to send to the front-end
+        $ordersData = $orders->map(function ($order) {
+            $mealDetails = [];
+            $totalPrice = 0;
+
+            foreach ($order->meals as $mealId => $quantity) {
+                $meal = Meal::find($mealId);
+
+                if ($meal) {
+                    $mealDetails[] = [
+                        'meal_id' => $mealId,
+                        'title' => $meal->title,
+                        'quantity' => $quantity,
+                        'price' => $meal->price * $quantity,
+                    ];
+                    $totalPrice += $meal->price * $quantity;
+                }
+            }
+
+            return [
+                'order_id' => $order->id,
+                'status' => $order->status,
+                'meals' => $mealDetails,
+                'total_price' => $totalPrice,
+                'order_date' => $order->created_at->format('F j, Y, g:i a'), // Human-readable date
+            ];
+        });
+
+        // Include pagination metadata
+        return response()->json([
+            'orders' => $ordersData,
+            'pagination' => [
+                'total' => $orders->total(),
+                'current_page' => $orders->currentPage(),
+                'last_page' => $orders->lastPage(),
+                'per_page' => $orders->perPage(),
+            ]
+        ]);
     }
 
     /**
